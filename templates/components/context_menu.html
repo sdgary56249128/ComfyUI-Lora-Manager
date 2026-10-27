@@ -1,3 +1,15 @@
+<style>
+    /* Local change: trim rarely used LoRA menu items so the menu fits the window */
+    #loraContextMenu [data-action="check-updates"],
+    #loraContextMenu [data-has-submenu="link-model"],
+    #loraContextMenu [data-action="enrich-hf-llm"],
+    #loraContextMenu [data-action="sendappend"],
+    #loraContextMenu [data-action="sendreplace"],
+    #loraContextMenu [data-action="download-examples-force"],
+    #loraContextMenu [data-action="set-nsfw"],
+    #loraContextMenu .context-menu-separator:has(+ [data-action="set-nsfw"]),
+    #loraContextMenu [data-action="exclude"] { display: none !important; }
+</style>
 <div id="loraContextMenu" class="context-menu">
     <!-- <div class="context-menu-item" data-action="detail">
         <i class="fas fa-info-circle"></i> Show Details
@@ -38,6 +50,12 @@
     </div>
     <div class="context-menu-item" data-action="sendreplace">
         <i class="fas fa-exchange-alt"></i> <span>{{ t('loras.contextMenu.sendToWorkflowReplace') }}</span>
+    </div>
+    <div class="context-menu-item" data-action="sendsaa">
+        <i class="fas fa-share-square"></i> <span>傳送到 SAA</span>
+    </div>
+    <div class="context-menu-item" data-action="sendsaa-triggers">
+        <i class="fas fa-tags"></i> <span>傳送到 SAA＋觸發詞</span>
     </div>
     <div class="context-menu-separator menu-section-break"></div>
     <!-- Media / Preview -->

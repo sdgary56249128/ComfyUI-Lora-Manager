@@ -141,6 +141,10 @@ export class BaseContextMenu {
             finalY = y - menuRect.height;
         }
 
+        // Local change: flipping can push a tall menu past the top on short windows, so clamp to the viewport
+        finalX = Math.max(0, Math.min(finalX, viewportWidth - menuRect.width));
+        finalY = Math.max(0, Math.min(finalY, viewportHeight - menuRect.height));
+
         // Position menu
         this.menu.style.left = `${finalX}px`;
         this.menu.style.top = `${finalY}px`;
