@@ -262,7 +262,8 @@
                 "title": "Título de la receta",
                 "loraName": "Nombre de archivo LoRA",
                 "loraModel": "Nombre del modelo LoRA",
-                "prompt": "Prompt"
+                "prompt": "Prompt",
+                "triggerWords": "Palabras de activación"
             }
         },
         "filter": {
@@ -384,10 +385,19 @@
             "copied": "Ruta de configuración copiada al portapapeles: {{path}}",
             "clipboardFallback": "Ruta de configuración: {{path}}"
         },
+        "comfyuiNodes": {
+            "title": "Configuración de nodos de ComfyUI",
+            "description": "La configuración relacionada con los nodos está disponible en la configuración de ComfyUI.",
+            "openButton": "Abrir la configuración de ComfyUI",
+            "modelNameDisplayLink": "Las etiquetas de los nodos se configuran por separado en la configuración de nodos de ComfyUI",
+            "openSucceeded": "Configuración de ComfyUI abierta.",
+            "openFailed": "No se pudo abrir la configuración de ComfyUI. Abre ComfyUI primero."
+        },
         "sections": {
             "contentFiltering": "Filtrado de contenido",
             "downloads": "Descargas",
             "videoSettings": "Configuración de video",
+            "cardPreview": "Vista previa de tarjeta",
             "layoutSettings": "Configuración de diseño",
             "licenseIcons": "Iconos de licencia",
             "misc": "Varios",
@@ -409,9 +419,33 @@
         "nav": {
             "general": "General",
             "interface": "Interfaz",
+            "comfyuiNodes": "Nodos de ComfyUI",
             "library": "Biblioteca",
             "organization": "Organización",
+            "about": "Acerca de",
             "modelPaths": "Rutas de modelos"
+        },
+        "about": {
+            "environmentTitle": "Entorno",
+            "environmentDescription": "Versiones utilizadas por LoRA Manager y ComfyUI.",
+            "copy": "Copiar",
+            "appVersion": "LoRA Manager",
+            "comfyuiVersion": "ComfyUI",
+            "frontendVersion": "Frontend de ComfyUI",
+            "pythonVersion": "Python",
+            "os": "Sistema operativo",
+            "browser": "Navegador",
+            "hint": "Incluye esta información al informar de un problema.",
+            "unavailable": "No disponible",
+            "copySuccess": "Información del entorno copiada",
+            "copyFailed": "Error al copiar la información del entorno",
+            "linksTitle": "Soporte y enlaces",
+            "links": {
+                "reportIssue": "Informar de un problema",
+                "wiki": "Wiki de documentación",
+                "github": "Repositorio de GitHub",
+                "discord": "Unirse a Discord"
+            }
         },
         "search": {
             "placeholder": "Buscar ajustes...",
@@ -439,6 +473,17 @@
         "videoSettings": {
             "autoplayOnHover": "Reproducir videos automáticamente al pasar el ratón",
             "autoplayOnHoverHelp": "Solo reproducir vistas previas de video al pasar el ratón sobre ellas"
+        },
+        "cardPreview": {
+            "cycleOnHover": "Cambiar imágenes de ejemplo al pasar el ratón",
+            "cycleOnHoverHelp": "Al pasar el ratón sobre la imagen de vista previa de una tarjeta, sus imágenes de ejemplo se muestran una tras otra. Pasar el ratón sobre el encabezado o el pie de la tarjeta no inicia el ciclo, por lo que los botones de acción y los tooltips siguen utilizables. La imagen de vista previa seleccionada no cambia. Las vistas previas de video no se ven afectadas.",
+            "cycleInterval": "Intervalo de cambio",
+            "cycleIntervalHelp": "Tiempo entre cada cambio de imagen de ejemplo mientras se pasa el ratón sobre una tarjeta.",
+            "cycleIntervalOptions": {
+                "fast": "Rápido (1,5 s)",
+                "normal": "Normal (2 s)",
+                "relaxed": "Pausado (3 s)"
+            }
         },
         "autoOrganizeExclusions": {
             "label": "Exclusiones de auto-organización",
@@ -612,10 +657,6 @@
             "cardBlurAmountHelp": "Ajuste la intensidad de desenfoque de las superposiciones del encabezado y pie de página en las tarjetas de modelos y recetas (0 = sin desenfoque, 20 = desenfoque máximo)."
         },
         "folderSettings": {
-            "activeLibrary": "Biblioteca activa (obsoleto)",
-            "activeLibraryHelp": "Alterna entre las bibliotecas configuradas para actualizar las carpetas predeterminadas. Cambiar la selección recarga la página. Obsoleto: la compatibilidad con varias bibliotecas se eliminará en una próxima versión. Varias raíces de carpeta dentro de una misma biblioteca siguen siendo totalmente compatibles.",
-            "loadingLibraries": "Cargando bibliotecas...",
-            "noLibraries": "No hay bibliotecas configuradas",
             "defaultLoraRoot": "Raíz de LoRA",
             "defaultLoraRootHelp": "Establecer el directorio raíz predeterminado de LoRA para descargas, importaciones y movimientos",
             "defaultCheckpointRoot": "Raíz de checkpoint",
@@ -704,7 +745,16 @@
             "pathPlaceholder": "Introducir ruta...",
             "go": "Ir",
             "emptyFolder": "No hay subcarpetas",
-            "loadError": "Error al cargar el directorio"
+            "loadError": "Error al cargar el directorio",
+            "newFolder": "Nueva carpeta",
+            "newFolderPlaceholder": "Nombre de la carpeta",
+            "create": "Crear",
+            "cancel": "Cancelar",
+            "createError": "Error al crear la carpeta",
+            "nameRequired": "Introduce un nombre de carpeta",
+            "nameInvalid": "El nombre de la carpeta contiene caracteres no válidos",
+            "alreadyExists": "Ya existe una carpeta con ese nombre",
+            "permissionDenied": "Permiso denegado"
         },
         "pathValidation": {
             "valid": "La ruta es válida",
@@ -749,10 +799,12 @@
                 "customTemplate": "Plantilla personalizada"
             },
             "customTemplatePlaceholder": "Introduce plantilla personalizada (ej., {base_model}/{author}/{first_tag})",
+            "workflowHint": "Se aplica a las descargas de workflows y a la organización automática en la página Workflows.",
             "modelTypes": {
                 "lora": "LoRA",
                 "checkpoint": "Checkpoint",
-                "embedding": "Embedding"
+                "embedding": "Embedding",
+                "workflow": "Workflow"
             },
             "baseModelPathMappings": "Mapeos de rutas de modelo base",
             "baseModelPathMappingsHelp": "Personalizar nombres de carpetas para modelos base específicos (ej., \"Flux.1 D\" → \"flux\")",
@@ -2069,6 +2121,8 @@
                 "sendToWorkflow": "Enviar a ComfyUI",
                 "sendToWorkflowText": "Enviar a ComfyUI",
                 "copyHash": "Copiar hash",
+                "calculateHash": "Calcular hash",
+                "retryHash": "Reintentar",
                 "copyCivitaiId": "Copiar ID de Civitai",
                 "civitaiIdCopied": "ID de Civitai copiado al portapapeles",
                 "deleteModelWithShortcut": "Eliminar modelo (Del)"
@@ -2095,6 +2149,10 @@
                 "baseModel": "Modelo base",
                 "size": "Tamaño",
                 "hashes": "Hashes",
+                "hashPending": "Aún no calculado",
+                "hashCalculating": "Calculando...",
+                "hashFailed": "Error de cálculo",
+                "hashPendingHint": "Este hash SHA256 aún no se ha calculado. En los modelos grandes el hash se calcula a demanda para que el escaneo siga siendo rápido.",
                 "civitaiModelId": "ID del modelo",
                 "civitaiVersionId": "ID de versión",
                 "unknown": "Desconocido",
@@ -2130,7 +2188,7 @@
                 "updated": "Parámetro preajustado actualizado"
             },
             "triggerWords": {
-                "label": "Palabras clave",
+                "label": "Palabras de activación",
                 "noTriggerWordsNeeded": "No se necesita palabra de activación",
                 "edit": "Editar palabras de activación",
                 "cancel": "Cancelar edición",
@@ -2716,6 +2774,7 @@
             "downloadSkippedByBaseModel": "Descarga omitida porque el modelo base {baseModel} está excluido",
             "autoOrganizeSuccess": "Auto-organización completada exitosamente para {count} {type}",
             "autoOrganizePartialSuccess": "Auto-organización completada con {success} movidos, {failures} fallidos de un total de {total} modelos",
+            "autoOrganizeProgressUnavailable": "Auto-organización completada con {success} movidos, {failures} fallidos de un total de {total} modelos; el progreso en vivo no estuvo disponible",
             "autoOrganizeFailed": "Auto-organización fallida: {error}",
             "filenameTemplateSuccess": "Plantilla de nombres de archivo aplicada exitosamente para {count} {type}",
             "filenameTemplatePartialSuccess": "Plantilla de nombres de archivo aplicada con {success} renombrados, {failures} fallidos de un total de {total} modelos",
@@ -2894,8 +2953,6 @@
             "compactModeToggled": "Modo compacto {state}",
             "settingSaveFailed": "Error al guardar configuración: {message}",
             "displayDensitySet": "Densidad de visualización establecida a {density}",
-            "libraryLoadFailed": "No se pudieron cargar las bibliotecas: {message}",
-            "libraryActivateFailed": "No se pudo activar la biblioteca: {message}",
             "languageChangeFailed": "Error al cambiar idioma: {message}",
             "cacheCleared": "Archivos de caché limpiados exitosamente. La caché se reconstruirá en la próxima acción.",
             "cacheClearFailed": "Error al limpiar caché: {error}",
@@ -2943,7 +3000,7 @@
             "tooLong": "La palabra de activación no debe exceder 500 palabras",
             "tooMany": "Máximo 100 palabras de activación permitidas",
             "alreadyExists": "Esta palabra de activación ya existe",
-            "updateSuccess": "Palabras clave actualizadas exitosamente",
+            "updateSuccess": "Palabras de activación actualizadas exitosamente",
             "updateFailed": "Error al actualizar palabras de activación",
             "copyFailed": "Error al copiar"
         },
@@ -3028,6 +3085,8 @@
             "refreshFailed": "Error al {action} {type}s",
             "metadataRefreshed": "Metadatos actualizados exitosamente",
             "metadataRefreshFailed": "Error al actualizar metadatos: {message}",
+            "hashCalculated": "Hash SHA256 calculado exitosamente",
+            "hashCalculationFailed": "Error al calcular el hash: {message}",
             "metadataUpdateComplete": "Actualización de metadatos completada",
             "operationCancelled": "Operación cancelada por el usuario",
             "operationCancelledPartial": "Operación cancelada. {success} elementos procesados.",

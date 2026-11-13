@@ -262,7 +262,8 @@
                 "title": "配方標題",
                 "loraName": "LoRA 檔案名稱",
                 "loraModel": "LoRA 模型名稱",
-                "prompt": "提示詞"
+                "prompt": "提示詞",
+                "triggerWords": "觸發詞"
             }
         },
         "filter": {
@@ -384,10 +385,19 @@
             "copied": "設定路徑已複製到剪貼簿：{{path}}",
             "clipboardFallback": "設定路徑：{{path}}"
         },
+        "comfyuiNodes": {
+            "title": "ComfyUI 節點設定",
+            "description": "與節點相關的設定位於 ComfyUI 設定中。",
+            "openButton": "開啟 ComfyUI 設定",
+            "modelNameDisplayLink": "節點標籤請在 ComfyUI 節點設定中另行設定",
+            "openSucceeded": "已開啟 ComfyUI 設定。",
+            "openFailed": "無法開啟 ComfyUI 設定，請先開啟 ComfyUI。"
+        },
         "sections": {
             "contentFiltering": "內容過濾",
             "downloads": "下載",
             "videoSettings": "影片設定",
+            "cardPreview": "卡片預覽",
             "layoutSettings": "版面設定",
             "licenseIcons": "許可協議圖標",
             "misc": "其他",
@@ -409,9 +419,33 @@
         "nav": {
             "general": "通用",
             "interface": "介面",
+            "comfyuiNodes": "ComfyUI 節點",
             "library": "模型庫",
             "organization": "整理",
+            "about": "關於",
             "modelPaths": "模型路徑"
+        },
+        "about": {
+            "environmentTitle": "環境",
+            "environmentDescription": "LoRA Manager 與 ComfyUI 使用的版本。",
+            "copy": "複製",
+            "appVersion": "LoRA Manager",
+            "comfyuiVersion": "ComfyUI",
+            "frontendVersion": "ComfyUI 前端",
+            "pythonVersion": "Python",
+            "os": "作業系統",
+            "browser": "瀏覽器",
+            "hint": "回報問題時請附上這些資訊。",
+            "unavailable": "不可用",
+            "copySuccess": "環境資訊已複製",
+            "copyFailed": "複製環境資訊失敗",
+            "linksTitle": "支援與連結",
+            "links": {
+                "reportIssue": "回報問題",
+                "wiki": "文件 Wiki",
+                "github": "GitHub 儲存庫",
+                "discord": "加入 Discord"
+            }
         },
         "search": {
             "placeholder": "搜尋設定...",
@@ -439,6 +473,17 @@
         "videoSettings": {
             "autoplayOnHover": "滑鼠懸停自動播放影片",
             "autoplayOnHoverHelp": "僅在滑鼠懸停時播放影片預覽"
+        },
+        "cardPreview": {
+            "cycleOnHover": "滑鼠懸停時輪播範例圖片",
+            "cycleOnHoverHelp": "滑鼠懸停在卡片的預覽圖片上時，會輪播其範例圖片。滑鼠懸停在卡片的頂部或底部區域不會觸發輪播，因此操作按鈕和懸浮提示仍可正常使用。所選的預覽圖片本身不會改變。影片預覽不受影響。",
+            "cycleInterval": "輪播間隔",
+            "cycleIntervalHelp": "滑鼠懸停於卡片時，範例圖片切換的時間間隔。",
+            "cycleIntervalOptions": {
+                "fast": "快（1.5 秒）",
+                "normal": "正常（2 秒）",
+                "relaxed": "舒緩（3 秒）"
+            }
         },
         "autoOrganizeExclusions": {
             "label": "自動整理排除項目",
@@ -612,10 +657,6 @@
             "cardBlurAmountHelp": "調整模型和配方卡片上頁首和頁尾疊加層的模糊強度（0 = 無模糊，20 = 最大模糊）。"
         },
         "folderSettings": {
-            "activeLibrary": "使用中的資料庫（已棄用）",
-            "activeLibraryHelp": "在已設定的資料庫之間切換以更新預設資料夾。變更選項將重新載入頁面。已棄用：多資料庫支援將在即將推出的版本中移除。單一資料庫內的多個資料夾根目錄仍完全受支援。",
-            "loadingLibraries": "正在載入資料庫...",
-            "noLibraries": "尚未設定任何資料庫",
             "defaultLoraRoot": "LoRA 根目錄",
             "defaultLoraRootHelp": "設定下載、匯入和移動時的預設 LoRA 根目錄",
             "defaultCheckpointRoot": "Checkpoint 根目錄",
@@ -704,7 +745,16 @@
             "pathPlaceholder": "輸入路徑...",
             "go": "前往",
             "emptyFolder": "沒有子資料夾",
-            "loadError": "目錄載入失敗"
+            "loadError": "目錄載入失敗",
+            "newFolder": "新增資料夾",
+            "newFolderPlaceholder": "資料夾名稱",
+            "create": "建立",
+            "cancel": "取消",
+            "createError": "建立資料夾失敗",
+            "nameRequired": "請輸入資料夾名稱",
+            "nameInvalid": "資料夾名稱包含無效字元",
+            "alreadyExists": "已存在同名資料夾",
+            "permissionDenied": "權限不足"
         },
         "pathValidation": {
             "valid": "路徑有效",
@@ -749,10 +799,12 @@
                 "customTemplate": "自訂範本"
             },
             "customTemplatePlaceholder": "輸入自訂範本（例如：{base_model}/{author}/{first_tag}）",
+            "workflowHint": "適用於工作流下載及工作流頁面上的自動整理。",
             "modelTypes": {
                 "lora": "LoRA",
                 "checkpoint": "Checkpoint",
-                "embedding": "Embedding"
+                "embedding": "Embedding",
+                "workflow": "工作流"
             },
             "baseModelPathMappings": "基礎模型路徑對應",
             "baseModelPathMappingsHelp": "自訂特定基礎模型的資料夾名稱（例如：「Flux.1 D」→「flux」）",
@@ -2069,6 +2121,8 @@
                 "sendToWorkflow": "傳送到 ComfyUI",
                 "sendToWorkflowText": "傳送到 ComfyUI",
                 "copyHash": "複製雜湊值",
+                "calculateHash": "計算雜湊值",
+                "retryHash": "重試",
                 "copyCivitaiId": "複製 Civitai ID",
                 "civitaiIdCopied": "Civitai ID 已複製到剪貼簿",
                 "deleteModelWithShortcut": "刪除模型（Del）"
@@ -2095,6 +2149,10 @@
                 "baseModel": "基礎模型",
                 "size": "大小",
                 "hashes": "雜湊值",
+                "hashPending": "尚未計算",
+                "hashCalculating": "計算中...",
+                "hashFailed": "計算失敗",
+                "hashPendingHint": "此 SHA256 雜湊值尚未計算。大型模型會按需計算雜湊，以維持掃描速度。",
                 "civitaiModelId": "模型 ID",
                 "civitaiVersionId": "版本 ID",
                 "unknown": "未知",
@@ -2716,6 +2774,7 @@
             "downloadSkippedByBaseModel": "由於基礎模型 {baseModel} 已被排除，已跳過下載",
             "autoOrganizeSuccess": "自動整理已成功完成，共 {count} 個 {type} 已整理",
             "autoOrganizePartialSuccess": "自動整理完成：已移動 {success} 個，{failures} 個失敗，共 {total} 個模型",
+            "autoOrganizeProgressUnavailable": "自動整理完成：已移動 {success} 個，{failures} 個失敗，共 {total} 個模型；即時進度不可用",
             "autoOrganizeFailed": "自動整理失敗：{error}",
             "filenameTemplateSuccess": "已成功為 {count} 個 {type} 套用檔案名稱範本",
             "filenameTemplatePartialSuccess": "檔案名稱範本套用完成：已重新命名 {success} 個，{failures} 個失敗，共 {total} 個模型",
@@ -2894,8 +2953,6 @@
             "compactModeToggled": "緊湊模式已{state}",
             "settingSaveFailed": "儲存設定失敗：{message}",
             "displayDensitySet": "顯示密度已設為 {density}",
-            "libraryLoadFailed": "載入模型庫失敗：{message}",
-            "libraryActivateFailed": "啟動模型庫失敗：{message}",
             "languageChangeFailed": "切換語言失敗：{message}",
             "cacheCleared": "快取檔案已成功清除。快取將於下次操作時重建。",
             "cacheClearFailed": "清除快取失敗：{error}",
@@ -3028,6 +3085,8 @@
             "refreshFailed": "{action} {type} 失敗",
             "metadataRefreshed": "metadata 已成功刷新",
             "metadataRefreshFailed": "刷新 metadata 失敗：{message}",
+            "hashCalculated": "SHA256 雜湊值計算成功",
+            "hashCalculationFailed": "計算雜湊值失敗：{message}",
             "metadataUpdateComplete": "metadata 更新完成",
             "operationCancelled": "操作已由用戶取消",
             "operationCancelledPartial": "操作已取消。已處理 {success} 個項目。",

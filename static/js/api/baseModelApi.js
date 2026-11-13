@@ -758,11 +758,15 @@ export class BaseModelApiClient {
 
             const data = await response.json();
 
-            if (data.success) {
-                if (data.metadata && state.virtualScroller) {
-                    state.virtualScroller.updateSingleItem(filePath, data.metadata);
-                }
+            // Apply the refreshed entry even when the lookup failed: the
+            // on-demand hash calculation may just have stored the SHA256 (and
+            // the failed lookup may have flagged the model), so the card must
+            // show it without waiting for a page reload.
+            if (data.metadata && state.virtualScroller) {
+                state.virtualScroller.updateSingleItem(filePath, data.metadata);
+            }
 
+            if (data.success) {
                 showToast('toast.api.metadataRefreshed', {}, 'success');
                 return true;
             } else {
@@ -776,6 +780,31 @@ export class BaseModelApiClient {
             state.loadingManager.hide();
             state.loadingManager.restoreProgressBar();
         }
+    }
+
+    /**
+     * Calculate the SHA256 hash of a lazily hashed model.
+     *
+     * Checkpoint / VAE / text-encoder scans store hash_status="pending" to keep
+     * startup fast; the model modal calls this to compute the hash on demand so
+     * the model can be searched on other sites.
+     *
+     * @param {string} filePath - The model file path.
+     * @returns {Promise<{sha256: string, hash_status: string, metadata?: Object}>}
+     */
+    async calculateModelHash(filePath) {
+        const response = await fetch(this.apiConfig.endpoints.calculateHash, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ file_path: filePath })
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || 'Failed to calculate model hash');
+        }
+
+        return data;
     }
 
     async fetchCivitaiMetadata() {
@@ -1740,11 +1769,25 @@ export class BaseModelApiClient {
         });
     }
 
+    /**
+     * Whether the View Local Versions filter is active for this model type.
+     */
+    _isVlmActiveForPage() {
+        const vlmModelId = getSessionItem('vlm_model_id');
+        const vlmPageType = getSessionItem('vlm_page_type');
+        return Boolean(vlmModelId) && vlmPageType === this.modelType;
+    }
+
     _buildQueryParams(baseParams, pageState) {
         const params = new URLSearchParams(baseParams);
         const isExcludedView = pageState.viewMode === 'excluded';
+        // View Local Versions is library-wide: a version moved to another folder
+        // is still a local version, so the browsing folder must not narrow it.
+        // PageControls clears the selection when the filter starts; this guard
+        // also covers state restored from storage.
+        const isVlmActive = this._isVlmActiveForPage();
 
-        if (!isExcludedView && pageState.activeFolder !== null) {
+        if (!isExcludedView && !isVlmActive && pageState.activeFolder !== null) {
             params.append('folder', pageState.activeFolder);
         }
 
@@ -1773,14 +1816,16 @@ export class BaseModelApiClient {
                 if (pageState.searchOptions.creator !== undefined) {
                     params.append('search_creator', pageState.searchOptions.creator.toString());
                 }
+                if (pageState.searchOptions.triggerWords !== undefined) {
+                    params.append('search_trigger_words', pageState.searchOptions.triggerWords.toString());
+                }
             }
         }
 
         params.append('recursive', pageState.searchOptions.recursive ? 'true' : 'false');
 
         // Pass group-by-model mode to backend (skip when showing all versions of a specific model)
-        const vlmModelId = getSessionItem('vlm_model_id');
-        if (state.global.settings.group_by_model && !vlmModelId) {
+        if (state.global.settings.group_by_model && !isVlmActive) {
             params.append('group_by_model', 'true');
         }
 
@@ -1866,16 +1911,17 @@ export class BaseModelApiClient {
 
     _addModelSpecificParams(params, pageState) {
         // Check for View Local Versions filter (takes priority over recipe filters)
-        const vlmModelId = getSessionItem('vlm_model_id');
-        const vlmPageType = getSessionItem('vlm_page_type');
-        if (vlmModelId && vlmPageType === this.modelType) {
-            params.append('civitai_model_id', vlmModelId);
+        if (this._isVlmActiveForPage()) {
+            params.append('civitai_model_id', getSessionItem('vlm_model_id'));
             const vlmBaseModel = getSessionItem('vlm_base_model');
             if (vlmBaseModel) {
                 params.append('base_model', vlmBaseModel);
             }
             return;
-        } else if (vlmModelId && vlmPageType !== this.modelType) {
+        }
+        const vlmModelId = getSessionItem('vlm_model_id');
+        const vlmPageType = getSessionItem('vlm_page_type');
+        if (vlmModelId && vlmPageType !== this.modelType) {
             // Stale VLM data from a different page type — clean up
             removeSessionItem('vlm_model_id');
             removeSessionItem('vlm_model_name');
@@ -2313,8 +2359,8 @@ export class BaseModelApiClient {
                     };
 
                     ws.onerror = (error) => {
-                        console.error('WebSocket error during auto-organize:', error);
-                        reject(new Error('Connection error'));
+                        console.warn('Auto-organize progress WebSocket unavailable; using the REST result:', error);
+                        resolve(null);
                     };
                 });
 
@@ -2345,12 +2391,22 @@ export class BaseModelApiClient {
                     throw new Error(errorData.error || 'Failed to start auto-organize operation');
                 }
 
-                // Wait for the operation to complete via WebSocket
-                const result = await operationComplete;
+                const responseData = await response.json();
+                const progressResult = await operationComplete;
+                const result = progressResult || {
+                    ...responseData,
+                    ...(responseData.summary || {}),
+                };
 
                 // Show appropriate success message based on results
                 if (result.status === 'cancelled') {
                     showToast('toast.api.operationCancelledPartial', { success: result.success, total: result.total }, 'info');
+                } else if (!progressResult) {
+                    showToast('toast.loras.autoOrganizeProgressUnavailable', {
+                        success: result.success,
+                        failures: result.failures,
+                        total: result.total
+                    }, 'warning');
                 } else if (result.failures === 0) {
                     showToast('toast.loras.autoOrganizeSuccess', {
                         count: result.success,

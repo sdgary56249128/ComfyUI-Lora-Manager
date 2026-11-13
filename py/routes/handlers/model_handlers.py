@@ -403,6 +403,9 @@ class ModelListingHandler:
             == "true",
             "tags": request.query.get("search_tags", "false").lower() == "true",
             "creator": request.query.get("search_creator", "false").lower() == "true",
+            "trigger_words": (
+                request.query.get("search_trigger_words", "false").lower() == "true"
+            ),
             "recursive": request.query.get("recursive", "true").lower() == "true",
         }
 
@@ -642,10 +645,17 @@ class ModelManagementHandler:
                 model_data=model_data,
                 update_cache_func=self._service.scanner.update_single_model_cache,
             )
-            if not success:
-                return web.json_response({"success": False, "error": error})
-
             formatted = await self._service.format_response(model_data)
+            if not success:
+                # The lookup failed (e.g. the model is not on CivitAI), but the
+                # on-demand hash calculation above may just have stored a hash
+                # and the failed lookup may have flagged the entry. Hand the
+                # refreshed entry back so the card shows it without a reload.
+                payload: Dict[str, Any] = {"success": False, "error": error}
+                if formatted is not None:
+                    payload["metadata"] = formatted
+                return web.json_response(payload)
+
             if formatted is None:
                 return web.json_response(
                     {"success": False, "error": "Model entry is corrupted (missing file_path)"},
@@ -951,6 +961,15 @@ class ModelManagementHandler:
             if not file_path:
                 return web.Response(text="File path is required", status=400)
 
+            if not os.path.isfile(os.path.abspath(file_path)):
+                return web.json_response(
+                    {
+                        "success": False,
+                        "error": "Model file no longer exists; refresh the model list before editing metadata",
+                    },
+                    status=409,
+                )
+
             metadata_updates = {k: v for k, v in data.items() if k != "file_path"}
 
             updated_metadata = await self._metadata_sync.save_metadata_updates(
@@ -985,6 +1004,15 @@ class ModelManagementHandler:
 
             if not isinstance(new_tags, list):
                 return web.Response(text="Tags must be a list", status=400)
+
+            if not os.path.isfile(os.path.abspath(file_path)):
+                return web.json_response(
+                    {
+                        "success": False,
+                        "error": "Model file no longer exists; refresh the model list before editing metadata",
+                    },
+                    status=409,
+                )
 
             tags, auto_tags = await self._tag_update_service.add_tags(
                 file_path=file_path,
@@ -1084,6 +1112,87 @@ class ModelManagementHandler:
                 "Error verifying duplicate models: %s", exc, exc_info=True
             )
             return web.json_response({"success": False, "error": str(exc)}, status=500)
+
+    async def calculate_model_hash(self, request: web.Request) -> web.Response:
+        """Calculate the SHA256 hash of a single model on demand.
+
+        Checkpoint and other-model scans deliberately leave ``sha256`` empty
+        and store ``hash_status="pending"`` (hashing a 10 GB file during
+        startup is not acceptable).  The model modal exposes the pending state
+        and calls this endpoint so the user can obtain the hash to search for
+        the file on other sites.
+        """
+        try:
+            data = await request.json()
+        except Exception:
+            data = {}
+        file_path = data.get("file_path") if isinstance(data, dict) else None
+        if not file_path:
+            return web.json_response(
+                {"success": False, "error": "File path is required"}, status=400
+            )
+
+        cache = await self._service.scanner.get_cached_data()
+        model_data = next(
+            (item for item in cache.raw_data if item.get("file_path") == file_path),
+            None,
+        )
+        if not model_data:
+            return web.json_response(
+                {"success": False, "error": "Model not found in cache"}, status=404
+            )
+
+        existing_hash = (model_data.get("sha256") or "").strip()
+        if existing_hash and model_data.get("hash_status", "completed") == "completed":
+            return web.json_response(
+                {
+                    "success": True,
+                    "sha256": existing_hash,
+                    "hash_status": "completed",
+                }
+            )
+
+        scanner = self._service.scanner
+        calculate_hash = getattr(scanner, "calculate_hash_for_model", None)
+        if calculate_hash is None:
+            return web.json_response(
+                {
+                    "success": False,
+                    "error": "On-demand hash calculation is not supported for this model type",
+                },
+                status=400,
+            )
+
+        self._logger.info("On-demand hash calculation triggered for %s", file_path)
+        sha256 = await calculate_hash(file_path)
+        if not sha256:
+            return web.json_response(
+                {
+                    "success": False,
+                    "error": "Failed to calculate SHA256 hash",
+                    "hash_status": "failed",
+                },
+                status=500,
+            )
+
+        # calculate_hash_for_model already rewrote .metadata.json and updated
+        # the in-memory cache entry; persist the cache so the hash survives a
+        # restart without waiting for the next full scan.
+        model_data["sha256"] = sha256.lower()
+        model_data["hash_status"] = "completed"
+        persist_cache = getattr(scanner, "_persist_current_cache", None)
+        if persist_cache is not None:
+            await persist_cache()
+
+        formatted = await self._service.format_response(model_data)
+        return web.json_response(
+            {
+                "success": True,
+                "sha256": sha256,
+                "hash_status": "completed",
+                "metadata": formatted,
+            }
+        )
 
 
 class ModelQueryHandler:
@@ -1750,10 +1859,16 @@ class ModelQueryHandler:
                 or allow_selling_generated_content is not None
             )
 
-            matching_paths = await self._service.search_relative_paths(
-                search,
-                limit,
-                offset,
+            match_model_name = request.query.get("match_model_name", "").lower() in (
+                "1",
+                "true",
+            )
+            include_model_name = request.query.get("include_model_name", "").lower() in (
+                "1",
+                "true",
+            )
+
+            search_kwargs = dict(
                 folder=folder,
                 recursive=recursive,
                 base_models=base_models,
@@ -1764,6 +1879,29 @@ class ModelQueryHandler:
                 credit_required=credit_required,
                 allow_selling_generated_content=allow_selling_generated_content,
                 apply_filters=apply_filters,
+            )
+
+            if match_model_name or include_model_name:
+                matches = await self._service.search_relative_path_matches(
+                    search,
+                    limit,
+                    offset,
+                    match_model_name=match_model_name,
+                    **search_kwargs,
+                )
+                payload = {
+                    "success": True,
+                    "relative_paths": [match["relative_path"] for match in matches],
+                }
+                if include_model_name:
+                    payload["items"] = matches
+                return web.json_response(payload)
+
+            matching_paths = await self._service.search_relative_paths(
+                search,
+                limit,
+                offset,
+                **search_kwargs,
             )
             return web.json_response(
                 {"success": True, "relative_paths": matching_paths}
@@ -1817,6 +1955,11 @@ class ModelQueryHandler:
                 exc_info=True,
             )
             return web.json_response({"success": False, "error": str(exc)}, status=500)
+
+
+def _is_truthy(value: Optional[str]) -> bool:
+    """Parse an optional boolean query-string flag."""
+    return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
 
 
 class ModelDownloadHandler:
@@ -2202,6 +2345,11 @@ class ModelDownloadHandler:
             download_id = request.query.get("download_id")
             id_str = request.query.get("id")
             item_id = int(id_str) if id_str else None
+            # ``start=true`` runs the retried download on the backend. The
+            # companion extension omits it (it drains the queue itself); a
+            # client without the extension would otherwise leave the row
+            # ``queued`` forever, since the SQLite queue has no executor.
+            start = _is_truthy(request.query.get("start"))
 
             if not download_id and not item_id:
                 return web.json_response(
@@ -2220,12 +2368,55 @@ class ModelDownloadHandler:
                 return web.json_response(
                     {"success": False, "error": "History item not found or not retryable"}
                 )
-            return web.json_response({"success": True, "item": item})
+            if not start:
+                return web.json_response({"success": True, "item": item})
+
+            result = await self._start_queued_download(item)
+            payload = dict(result)
+            payload["item"] = item
+            payload["started"] = True
+            if not result.get("success", False):
+                status = 429 if result.get("reason") == "rate_limited" else 500
+                return web.json_response(payload, status=status)
+            return web.json_response(payload)
+        except DownloadModelValidationError as exc:
+            return web.json_response({"success": False, "error": str(exc)}, status=400)
+        except DownloadModelEarlyAccessError as exc:
+            self._logger.warning("Early access error: %s", exc)
+            return web.json_response({"success": False, "error": str(exc)}, status=401)
         except Exception as exc:
             self._logger.error(
                 "Error retrying download from history: %s", exc, exc_info=True
             )
             return web.json_response({"success": False, "error": str(exc)}, status=500)
+
+    async def _start_queued_download(self, item: dict[str, Any]) -> dict[str, Any]:
+        """Start a re-queued download without a client-side executor.
+
+        ``retry_from_history`` only writes a ``queued`` row. The queue is
+        normally drained by the companion browser extension, so callers
+        without it (headless or third-party integrations) pass
+        ``start=true`` to have the backend run the download now. The payload
+        mirrors what the extension sends on retry, and reuses the re-queued
+        ``download_id`` so the normal status transitions keep updating the
+        same row.
+        """
+        file_params: Any = item.get("file_params")
+        if isinstance(file_params, str):
+            try:
+                file_params = json.loads(file_params) or None
+            except json.JSONDecodeError:
+                file_params = None
+
+        payload = {
+            "model_id": item.get("model_id"),
+            "model_version_id": item.get("model_version_id"),
+            "download_id": item.get("download_id"),
+            "use_default_paths": True,
+            "source": item.get("source") or "retry",
+            "file_params": file_params or None,
+        }
+        return await self._download_use_case.execute(payload)
 
     async def retry_all_failed_downloads(self, request: web.Request) -> web.Response:
         try:
@@ -3709,6 +3900,7 @@ class ModelHandlerSet:
             "rename_model": self.management.rename_model,
             "bulk_delete_models": self.management.bulk_delete_models,
             "verify_duplicates": self.management.verify_duplicates,
+            "calculate_model_hash": self.management.calculate_model_hash,
             "get_top_tags": self.query.get_top_tags,
             "search_tags": self.query.search_tags,
             "get_base_models": self.query.get_base_models,
